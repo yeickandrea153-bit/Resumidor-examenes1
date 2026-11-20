@@ -84,14 +84,12 @@ def export_to_docx_bytes(
     doc = docx.Document()
     doc.add_heading(f"Guía de Estudio: {extraction.filename}", level=0)
 
-    # 1. Resumen
     doc.add_heading("1. Resumen Estructurado", level=1)
     for sec_title, sents in summary.by_section.items():
         doc.add_heading(sec_title, level=2)
         for s in sents:
             doc.add_paragraph(s, style="List Bullet")
 
-    # 2. Glosario
     if summary.glossary:
         doc.add_heading("2. Conceptos Clave / Glosario", level=1)
         for term, definition in summary.glossary:
@@ -100,7 +98,6 @@ def export_to_docx_bytes(
             run_term.bold = True
             p.add_run(definition)
 
-    # 3. Preguntas
     if questions:
         doc.add_heading("3. Posibles Preguntas de Examen", level=1)
         for idx, q in enumerate(questions, start=1):
@@ -128,7 +125,6 @@ def export_to_docx_bytes(
                     run.italic = True
                     run.font.size = Pt(9.5)
 
-    # 4. Código rescatado
     if extraction.code_blocks:
         doc.add_heading("5. Bloques de Código Detectados", level=1)
         for loc, code in extraction.code_blocks:
