@@ -1,4 +1,4 @@
-# 📚 Resumidor de Documentos y Generador de Exámenes (Sin IA)
+# 📚 Resumidor de Documentos y Generador de Exámenes 
 
 Aplicación web construida en **Python + Streamlit** que analiza documentos académicos (`.docx`, `.pdf`, `.pptx`, `.txt`), genera resúmenes estructurados y crea bancos de preguntas de examen **sin depender de APIs externas ni modelos de IA pagos**.
 
