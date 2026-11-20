@@ -1,4 +1,4 @@
-"""Aplicación Streamlit: Resumidor de Documentos y Generador de Exámenes sin IA."""
+"""Aplicación Streamlit v2.0: Resumidor de Documentos y Generador de Exámenes sin IA."""
 import streamlit as st
 
 from core.exportador import TYPE_LABELS, export_to_docx_bytes, export_to_markdown
@@ -8,7 +8,7 @@ from core.preguntas import generate_exam_questions
 from core.resumidor import summarize_document
 
 st.set_page_config(
-    page_title="EstudiaSinIA — Resumidor y Generador de Exámenes",
+    page_title="EstudiaSinIA v2 — Resumidor y Generador de Exámenes",
     page_icon="📚",
     layout="wide",
 )
@@ -22,35 +22,43 @@ def get_nlp():
 def main():
     st.title("📚 Resumidor de Documentos y Generador de Exámenes")
     st.caption(
-        "Funciona 100% sin APIs externas ni IA generativa: usa TextRank, TF-IDF, MMR, spaCy y OCR (Tesseract)."
+        "v2.0 — 100% sin APIs externas: TextRank por capítulos, reconstrucción de párrafos, filtro de cabeceras/índices y OCR."
     )
 
     nlp = get_nlp()
     ocr_ready = check_ocr_available()
 
-    # --- Barra lateral de configuración ---
+    # --- Barra lateral ---
     with st.sidebar:
         st.header("⚙️ Configuración")
 
         ratio = st.slider(
-            "Extensión del resumen (%)",
+            "Densidad del resumen (%)",
             min_value=10,
-            max_value=60,
-            value=30,
+            max_value=50,
+            value=25,
             step=5,
-            help="Porcentaje aproximado de oraciones clave que se conservarán.",
+            help="Porcentaje aproximado de oraciones clave por cada sección o capítulo.",
         ) / 100.0
 
-        max_sentences = st.slider(
-            "Máximo de oraciones en el resumen",
-            min_value=5,
-            max_value=40,
-            value=15,
+        auto_proportional = st.toggle(
+            "Extensión proporcional automática",
+            value=True,
+            help="Adapta el largo del resumen automáticamente según si subes un apunte corto o un libro de 150 páginas.",
         )
+
+        max_sentences = None
+        if not auto_proportional:
+            max_sentences = st.slider(
+                "Límite manual de oraciones",
+                min_value=5,
+                max_value=80,
+                value=20,
+            )
 
         st.divider()
         st.subheader("📝 Generador de Examen")
-        num_questions = st.slider("Cantidad de preguntas", min_value=3, max_value=25, value=10)
+        num_questions = st.slider("Cantidad de preguntas", min_value=3, max_value=30, value=10)
 
         q_types = st.multiselect(
             "Tipos de preguntas",
@@ -67,7 +75,7 @@ def main():
             "Extraer texto y código de imágenes",
             value=ocr_ready,
             disabled=not ocr_ready,
-            help="Usa Tesseract OCR para leer capturas de código, apuntes o etiquetas de diagramas.",
+            help="Usa Tesseract OCR con filtro de calidad para leer capturas de código y etiquetas de diagramas.",
         )
 
         st.divider()
@@ -75,7 +83,7 @@ def main():
         st.write(f"- spaCy (español): {'✅ Activo' if nlp else '⚠️ Modo respaldo (regex)'}")
         st.write(f"- Tesseract OCR: {'✅ Activo' if ocr_ready else '⚠️ No instalado'}")
 
-    # --- Entrada de documento o texto ---
+    # --- Entrada ---
     input_mode = st.radio(
         "¿Cómo deseas cargar tu material de estudio?",
         ["Subir archivo (Word, PDF, PowerPoint, TXT)", "Pegar texto directamente"],
@@ -88,10 +96,10 @@ def main():
         uploaded_file = st.file_uploader(
             "Arrastra o selecciona tu documento",
             type=["docx", "pdf", "pptx", "txt"],
-            help="Soporta .docx, .pdf, .pptx y .txt",
+            help="Soporta .docx, .pdf (1 o 2 columnas), .pptx y .txt",
         )
         if uploaded_file is not None:
-            with st.spinner("Extrayendo texto, estructura e imágenes..."):
+            with st.spinner("Extrayendo texto, limpiando cabeceras/índices y reconstruyendo párrafos..."):
                 extraction = extract_document(
                     uploaded_file.getvalue(),
                     uploaded_file.name,
@@ -114,12 +122,25 @@ def main():
     for warn in extraction.warnings:
         st.warning(warn)
 
+    # Mostrar limpieza automática realizada (transparencia para el usuario)
+    cleanup_notes = []
+    if extraction.removed_headers_footers:
+        cleanup_notes.append(
+            f"Se filtraron **{len(extraction.removed_headers_footers)}** cabecera(s)/pie(s) repetidos automáticamente."
+        )
+    if extraction.excluded_sections:
+        cleanup_notes.append(
+            f"Se excluyeron secciones no resumibles: *{', '.join(extraction.excluded_sections)}*."
+        )
+    if cleanup_notes:
+        st.caption("🧹 Limpieza automática: " + " | ".join(cleanup_notes))
+
     if not extraction.full_theory_text.strip() and not extraction.code_blocks:
         st.error("No se pudo extraer texto legible del documento. Si es un PDF escaneado, asegúrate de tener OCR activo.")
         return
 
     # --- Procesamiento NLP ---
-    with st.spinner("Calculando relevancia de oraciones (TextRank + Heurísticas + MMR) y generando examen..."):
+    with st.spinner("Resumiendo por capítulos (TextRank + Heurísticas + MMR) y generando examen..."):
         summary = summarize_document(
             extraction,
             ratio=ratio,
@@ -134,14 +155,14 @@ def main():
             seed=int(seed),
         )
 
-    # --- Métricas superiores ---
+    # --- Métricas ---
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Oraciones analizadas", summary.total_sentences)
-    c2.metric("Oraciones en resumen", len(summary.selected_sentences))
+    c1.metric("Oraciones válidas", summary.total_sentences)
+    c2.metric("Resumen / Secciones", f"{len(summary.selected_sentences)} ({summary.total_sections} sec.)")
     c3.metric("Preguntas generadas", len(questions))
-    c4.metric("Bloques de código / OCR", len(extraction.code_blocks))
+    c4.metric("Bloques código / OCR", len(extraction.code_blocks))
 
-    # --- Pestañas de resultados ---
+    # --- Pestañas ---
     tab_resumen, tab_examen, tab_quiz, tab_glosario, tab_codigo, tab_export = st.tabs([
         "📄 Resumen",
         "📝 Banco de Preguntas",
@@ -151,9 +172,8 @@ def main():
         "⬇️ Exportar",
     ])
 
-    # TAB 1: Resumen
     with tab_resumen:
-        st.subheader("Resumen estructurado por secciones")
+        st.subheader("Resumen estructurado por secciones / capítulos")
         if not summary.by_section:
             st.warning("El texto teórico es demasiado corto para resumir.")
         else:
@@ -162,7 +182,6 @@ def main():
                 for s in sents:
                     st.markdown(f"- {s}")
 
-    # TAB 2: Banco de Preguntas
     with tab_examen:
         st.subheader("Posibles preguntas de examen")
         show_answers = st.toggle("Mostrar respuestas y explicaciones", value=False)
@@ -181,7 +200,6 @@ def main():
                     if q.explanation:
                         st.caption(q.explanation)
 
-    # TAB 3: Simulacro interactivo
     with tab_quiz:
         st.subheader("Simulacro interactivo")
         interactive_qs = [q for q in questions if q.q_type in ("opcion_multiple", "verdadero_falso")]
@@ -214,7 +232,6 @@ def main():
                 score_pct = (correct_count / len(interactive_qs)) * 100
                 st.metric("Puntaje final", f"{correct_count} / {len(interactive_qs)} ({score_pct:.0f}%)")
 
-    # TAB 4: Glosario y Palabras Clave
     with tab_glosario:
         st.subheader("Palabras clave detectadas (TF-IDF)")
         if summary.keywords:
@@ -227,7 +244,6 @@ def main():
         else:
             st.info("No se detectaron definiciones suficientes para armar el glosario.")
 
-    # TAB 5: Código e Imágenes OCR
     with tab_codigo:
         st.subheader("Bloques de código detectados (listos para copiar)")
         st.caption("Se separan automáticamente del texto teórico para que no contaminen el resumen.")
@@ -248,7 +264,6 @@ def main():
                     else:
                         st.write(item.text)
 
-    # TAB 6: Exportar
     with tab_export:
         st.subheader("Descargar guía de estudio")
         md_data = export_to_markdown(extraction, summary, questions)

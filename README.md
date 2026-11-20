@@ -1,34 +1,16 @@
-# 📚 Resumidor de Documentos y Generador de Exámenes 
+# 📚 Resumidor de Documentos y Generador de Exámenes v2.0 (Sin IA)
 
-Aplicación web construida en **Python + Streamlit** que analiza documentos académicos (`.docx`, `.pdf`, `.pptx`, `.txt`), genera resúmenes estructurados y crea bancos de preguntas de examen **sin depender de APIs externas ni modelos de IA pagos**.
+Aplicación web construida en **Python + Streamlit** que analiza documentos académicos (`.docx`, `.pdf`, `.pptx`, `.txt`), genera resúmenes estructurados proporcionales y crea bancos de preguntas de examen **sin depender de APIs externas**.
 
-## ✨ ¿Cómo logra resultados cercanos a una IA?
-1. **Resumen extractivo híbrido:** Combina **TextRank** (grafo de similitud TF-IDF + PageRank) con **heurísticas estructurales** (peso extra a ideas relacionadas con títulos, inicio/cierre de secciones y marcadores académicos como *"se define como"*, *"en conclusión"*) y **MMR (Maximal Marginal Relevance)** para eliminar oraciones repetitivas.
-2. **Generador de exámenes multiformato:**
-   - **Opción Múltiple** con distractores inteligentes sacados del mismo documento.
-   - **Completar espacios (Cloze / Flashcards)**.
-   - **Preguntas de Desarrollo** (detecta definiciones, funciones, clasificaciones y causas).
-   - **Verdadero / Falso** (crea afirmaciones falsas plausibles sustituyendo conceptos clave).
-   - **Modo Simulacro interactivo** con puntaje instantáneo.
-3. **Soporte de imágenes y código (OCR):** Usa **Tesseract OCR** para extraer texto de capturas de pantalla (por ejemplo, bloques de código puestos como imagen en diapositivas o PDFs) y separa automáticamente el código de la teoría para no contaminar el resumen.
+## ✨ Novedades en v2.0
+- **Reconstrucción de párrafos en PDF:** Une renglones cortados y descarta fragmentos incompletos (se acabaron las frases cortadas a la mitad).
+- **Eliminación automática de cabeceras, pies y marcas de agua:** Detecta líneas repetidas en el 35%+ de las páginas (como el nombre de tu institución o números de página) y las borra antes de resumir.
+- **Filtro de Índices y Bibliografías:** Excluye automáticamente tablas de contenido (`.... 12`), URLs/DOIs y secciones de *Referencias / Bibliografía*.
+- **Soporte para PDFs a dos columnas:** Ordena los bloques de texto respetando la lectura columna por columna.
+- **Resumen proporcional por capítulos (RAM-safe):** Divide libros extensos por capítulos o bloques de hasta 220 oraciones para evitar caídas de memoria en Streamlit Cloud.
+- **Viñetas en PowerPoint y filtro de calidad OCR:** Normaliza listas sin punto final en `.pptx` y descarta ruido visual de Tesseract OCR.
+- **`requirements.txt` listo para Streamlit Cloud:** Incluye el enlace directo del modelo `es_core_news_sm-3.8.0` de spaCy para evitar errores de permisos.
 
-## 🚀 Despliegue en Streamlit Community Cloud (vía GitHub)
-1. Crea un repositorio en GitHub y sube todos los archivos de esta carpeta.
-2. Entra a [share.streamlit.io](https://share.streamlit.io/) e inicia sesión con tu cuenta de GitHub.
-3. Haz clic en **New app**, selecciona tu repositorio, rama `main` y archivo principal `app.py`.
-4. Streamlit instalará automáticamente `requirements.txt` (librerías Python) y `packages.txt` (Tesseract OCR en español).
-
-## 💻 Ejecución local
-```bash
-python -m venv .venv
-# En Windows:
-.venv\Scripts\activate
-# En Linux/Mac:
-source .venv/bin/activate
-
-pip install -r requirements.txt
-python -m spacy download es_core_news_sm
-streamlit run app.py
-```
-
-*(Opcional en Windows para OCR local: instala [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) y agrégalo al PATH).*
+## 🚀 Despliegue en Streamlit Cloud
+1. Sube estos archivos a tu repositorio de GitHub (rama `main`).
+2. En [share.streamlit.io](https://share.streamlit.io/), selecciona tu repositorio, rama `main` y archivo principal `app.py`.
